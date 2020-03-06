@@ -108,19 +108,25 @@ tabItem(tabName = "Intro",
             "Write stuff about how the data was collected",
             h4("The Websites:"),
             "Find a way to display url here.",
-            tagList("URL link:", url)
+            tagList("URL link:", url),
+            h4("Checkboxes: "),
+            conditionalPanel(
+                 'input.dataset === "data"',
+                 checkboxGroupInput("show_vars", "Columns in diamonds to show:",
+                                    names(data), selected = names(data))
+               ),
             ),
 
         # The box with tables to display the data and information about the data:
         tabBox(title = "Tables", width = 12,
-                tabPanel(title = "Descritption", 
+               tabPanel(title = "Descritption", 
                         # find a way to display the description.csv file in a table here
                         tableOutput("static_table"),
-                        ),
-                tabPanel(title = "Dataset",
+               ),
+               tabPanel(title = "data",
                         # find a way to display the data with a dynamic datatable
                         DT::dataTableOutput("dynamic_table"),
-                        )
+               )
               )
         ), # end of INTRO page content
 
@@ -296,7 +302,10 @@ server <- function(input, output) {
   output$static_table <- renderTable(desc)
   
   # And a dynamic one for the data itslef (we want to be able to filter the data online)
-  output$dynamic_table <- DT::renderDataTable({data})
+  diamonds2 = data[sample(nrow(data), 1000), ]
+  output$dynamic_table <- DT::renderDataTable({
+    DT::datatable(diamonds2[, input$show_vars, drop = FALSE]) })
+  #output$dynamic_table <- DT::renderDataTable({data})
   
 ############## THE VISUAL EXPLORATION TAB WITH FILTERING AND PLOTS #################################
   
