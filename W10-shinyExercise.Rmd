@@ -1,0 +1,374 @@
+---
+title: "shiny Etracking"
+author: "Rnault"
+date: "3/2/2020"
+output: html_document
+runtime: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(
+  "shiny", "shinydashboard", # The packages we use to create the structures
+  "shinycustomloader", # A package to make custom loading bars, nice if lots of computation
+  "DT", # Makes dynamic data tables. Use if the shiny function for it acts weird
+  "tidyverse", # We use it to manipulate data (dplyr) and render plots (ggplot)
+  "lmerTest", "lme4", # for linear regression
+  "sjPlot" # renders a custom html table for the regression's results
+)
+```
+
+# FIRST PART: Preparing
+
+```{r, echo=FALSE}
+
+### 1. We load the data as well as its description
+data <- read.csv("clean_data.csv")
+desc <- read_csv("description.csv")
+
+### 2. We might want to transform some variables
+# For example: some of our variables are factors, but because they are encoded numbers, they are considered numeric. We might want to change that if we want to visualise the data properly.
+data$cinemaxx_1st <- as.factor(data$cinemaxx_1st)
+data$session <- as.factor(data$session)
+
+# Feel free to do more transformation
+
+
+### 3. For each plot type, we'll only want a subset of all available variables that actually make sens for this type of plot
+# It might be smart to pre select outside of the UI function to keep track of things
+
+to_density <- data %>% 
+  # some filtering
+  colnames()
+
+to_evo <- data %>% 
+  # some filtering
+  colnames()
+
+to_color <- data %>% 
+  # some filtering
+  colnames()
+
+to_compare_d <- data %>% 
+  # some filtering 
+  colnames()
+
+to_compare_c <- data %>% 
+  # some filtering
+  colnames()
+
+to_relationship <- data %>% 
+  # some filtering
+  colnames()
+
+
+### 4. Initial model to set as an example
+# initialising values to put in the dynamic values of the server
+o1 <- "event"
+p1 <- "website"
+r1 <- "(1|name)"
+f1 = "event ~ website + (1|name)"
+
+#run the example model
+m1 <- glmer(formula = f1, data, family = binomial)
+m2 <- glmer(formula = "website ~ event + (1|name)", data, family = binomial)
+# create the first table      
+tab_model(m1, file = "model.html")
+```
+
+# PART II: THE USER INTERFACE
+
+```{r}
+# Setting up the UI for the website
+ui <- dashboardPage(
+  dashboardHeader(title = "Visualising Eyetracking Data"),
+  
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Description of the dataset", tabName ="Intro", icon = icon("table")),
+      menuItem("Visual Exploration", tabName ="Exploring", icon = icon("chart-area")),
+      menuItem("Modelling", tabName ="Modelling", icon = icon("calculator"))
+    )
+  ),
+  
+  dashboardBody(
+    
+tabItems(
+
+############## THE INTRODUCTION TAB WITH INFO AND TABLES #################################
+tabItem(tabName = "Intro",
+
+        # The box with short introduction text:
+        box(width = 12,
+            h4("Introduction:"),
+            "Write stuff about your app here.",
+            h4("The Task:"),
+            "Write stuff about how the data was collected",
+            h4("The Websites:"),
+            "Find a way to display url here."
+            ),
+
+        # The box with tables to display the data and information about the data:
+        tabBox(title = "Tables", width = 12,
+                tabPanel(title = "Descritption", 
+                        # find a way to display the description.csv file in a table here
+                        ),
+                tabPanel(title = "Dataset",
+                        # find a way to display the data with a dynamic datatable
+                        )
+              )
+        ), # end of INTRO page content
+
+############## THE VISUAL EXPLORATION TAB WITH FILTERING AND PLOTS #################################
+tabItem(tabName = "Exploring",
+
+# The filtering box
+        box(title = "Filtering", width = 12,
+# Each column is a variable we use to filter our dataset
+# We use checboxGroupInput because they allow us to select and deselect multiple levels
+            column(4, "1st filtering varialbe here"
+                   ),
+            column(2, "2nd filtering varialbe here"
+                   ),
+            column(2, "3rd filtering varialbe here"
+                   ),
+            column(2, "4th filtering varialbe here"
+                   ),
+            column(2, "5th filtering varialbe here" # feel free to have more or less than that
+                   )
+        ),
+
+# The plot box
+# That bow has 3 elements: 2 inputs for color and wrap and 1 box to select different plot types
+# we arrange both inputs in a row using the column function
+        box(width = 12,  title = "Plot Box",
+            # some Input for Color selection
+            column(3,
+                   "color selection here"
+                   ),
+            # some Input for Wrapping selection
+            column(9, 
+                   "wrapping selection here"
+                   ),
+            # Box where each plot is a tab
+            # HINT: Each plot will work best for certain types of variables, make sure that you can select only the relevant variable for each type of plots (using some selectInput)
+            tabBox( title = "Choose a Plot type", width = 12,
+                    # Plot type 1
+                    tabPanel(title = "Plot Type 1: name",
+                             column(4, 
+                                    "input specific to plot 1 here"
+                                    ),
+                             "some output function to display plot 1 here",
+                            ),
+                    # Plot type 2
+                    tabPanel(title = "Plot Type 2: name",
+                             column(4, 
+                                    "input specific to plot 2 here"
+                                    ),
+                             "some output function to display plot 2 here"
+                             ),
+                    # Plot type 3
+                    tabPanel(title = "Plot Type 3: name",
+                             column(4, 
+                                    "input specific to plot 3 here"
+                                    ),
+                             column(4, 
+                                    "Maybe plot 3 needs more than 1 input?
+                                    Then make a second column."
+                                    ),
+                             "some output function to display plot 3 here"
+                             ),
+                    # Plot type 4
+                    tabPanel(title = "Plot Type 4: name",
+                             column(4, 
+                                    "input specific to plot 4 here"
+                                    ),
+                             column(4, 
+                                    "Maybe plot 4 needs more than 1 input?
+                                    Then make a second column."
+                                    ),
+                               "some output function to display plot 4 here"
+                             )
+                  )
+          )
+      ), # end of PLOT page content
+
+############## THE MODELLING TAB WITH SUMMARY AND DESCRIPTION #################################
+tabItem(tabName ="Modelling",
+        # box to specify a model
+        box(width = 12,
+            h2("Model Specification:"),
+            # column functions are used to line the input horizontally
+            column(width = 6,
+            "some input function here,
+            What's your outcome variable?"
+                  ),
+            column(width = 6,
+            "some input function here.
+            What's your predictors?"
+                  ),
+            column(width = 6,
+            "some input function here,
+            What's your random effects?"
+                      ),
+            column(width = 6,
+            "some input function here,
+            any other thing needed for model to run?"
+                        ),
+            "You might need some button to run the model here"
+            ),
+        # box to display html report and characteristics of the model
+        box(width = 12,
+            column(width = 6,
+                   h2("Summary"),
+                   "How to display your table?"
+                   ),
+            column(width = 6,
+                   h2("Current Model Characteristics:"),
+                   h4("Formula"),
+                   "How to display the formula?",
+                   h4("Outcome"),
+                   "How to display your outcome variable?",
+                   h4("Predictors"),
+                   "How to display your predictors?",
+                   h4("Random Effect"),
+                   "How to display your random effects?"
+                    )
+            )
+        ) # end of MODEL page content
+    
+    ) # end of tabItems (listing all content)
+  )# end of body
+)#ui end
+```
+
+# PART III: THE SERVER
+
+```{r}
+
+# Setting up the server for the website, where dynamic stuff happens
+server <- function(input, output) {
+  
+  # First, We define our reactive values to store temporary 
+  # The list is non exhaustive, feel free to add your own according to your needs
+  v <- reactiveValues(
+    
+    ### GENERAL
+    data = data, # our dataset
+    desc = desc, # the description
+    
+    ### FILTERING DATA TO PLOT
+    name = unique(data$name),
+    order_t = unique(data$order_tickets_online),
+    website = unique(data$website),
+    session = unique(data$session),
+    event = unique(data$event),
+    
+    ### PLOT COLOR AND WRAP
+    facets = NULL,
+    
+    ### MODELLING PAGE
+    outcome = o1, 
+    predictors = p1,
+    random = r1,
+    formula = f1,
+    model = m1
+  )
+  
+
+############## THE INTRODUCTION TAB WITH INFO AND TABLES #################################
+  
+  # Here we need to render some hyperlinks to our cinema website
+
+  
+  # We also need to render a static table for the description of our variables
+
+  
+  # And a dynamic one for the data itslef (we want to be able to filter the data online)
+
+  
+############## THE VISUAL EXPLORATION TAB WITH FILTERING AND PLOTS #################################
+  
+  ### 1. Our observeEvent
+  
+  # We want to be able to plot only part of the data, which mean we have to watch for the user's input for what to filter
+  
+  # by participant
+
+  
+  # by expertise (order_tickets_online)
+
+  
+  # by website
+
+  
+  # by session
+
+  
+  # by event
+
+  
+  # We also want to dynamically color or facet the plot based on user input
+
+
+  ### 2. Our renderPlot
+  
+  # Now that we record the user's input, we need to is it to display the plots
+  
+  # plot type 1
+
+  
+  # plot type 2
+
+  
+  # plot type 3
+
+  
+  # plot type 4
+
+  
+############## THE MODELLING TAB WITH SUMMARY AND DESCRIPTION #################################
+  
+  ### 1. Our observeEvent
+  
+  # We want to make sure that when we run the model:
+  # - we store the right variables
+  # - we create the right formula
+  # - we run the model
+  # - we save the html table of the results
+
+  
+  ### 2. Rendering the information
+  
+  # We need to render the formula (as text)
+
+  # We need to render the html table (see renderUI and includeHTML functions)  
+
+  
+  # We need to render information about the different parts of the model (outcome, predictors,...)
+  # for that, we would like to extract it from the description.csv table
+  # HINT: Maybe we should find a way to extract the name of variables from the user's text input.
+  # After what we can simply filter the table? to display what we want?
+  # HINT 2: It means we actually render a table (not text)
+  
+  # to show outcome
+
+  
+  #to show predictors
+
+  
+  # to show random effect
+
+
+  
+}#server end
+```
+
+
+# PART IV: RUN THE WEBSITE
+
+```{r}
+shinyApp(ui, server) #Run app
+```
+
+
+
